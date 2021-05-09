@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -139,6 +141,14 @@ namespace WineScraper
             SendMessage(control.Handle, EM_SETCUEBANNER, 0, text);
         }
 
+        private string MakeValidFileName(string name)
+        {
+            string invalidChars = Regex.Escape(new string(Path.GetInvalidFileNameChars()));
+            string invalidRegStr = string.Format(@"([{0}]*\.+$)|([{0}]+)", invalidChars);
+
+            return Regex.Replace(name, invalidRegStr, "_");
+        }
+
         private void Scrape()
         {
             try
@@ -171,6 +181,56 @@ namespace WineScraper
                 doc.LoadHtml(rawHtml);
 
                 Log("Getting pages...");
+
+                List<string> productsURLs = new List<string>();
+
+                var parentElement = doc.GetElementbyId("content");
+                var productsDivs = parentElement.SelectNodes(".//div[contains(@class, 'product-thumb')]");
+
+                foreach(var product in productsDivs)
+                {
+                    string url = product.SelectSingleNode(".//div[@class='name']").SelectSingleNode(".//a[@href]").GetAttributeValue("href", string.Empty);
+
+                    if (url.EndsWith("?limit=100"))
+                        url = url.Substring(0, url.Length - 10);
+
+                    bool result = Uri.TryCreate(url, UriKind.Absolute, out Uri uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+
+                    if (result)
+                        productsURLs.Add(url);
+                }
+
+                Log("Getting products...");
+
+                foreach(var url in productsURLs)
+                {
+                    rawHtml = client.DownloadString(url);
+
+                    doc = new HtmlDocument();
+                    doc.LoadHtml(rawHtml);
+
+                    parentElement = doc.GetElementbyId("content");
+                    var productDiv = parentElement.SelectSingleNode(".//div[@class='row']").SelectSingleNode(".//div[@class='product-buy-wrapper']");
+
+                    string name = productDiv.SelectSingleNode(".//h1").InnerText;
+
+                    string validFileName = MakeValidFileName(name);
+                    string productPath = Path.Combine(MainDir, validFileName);
+
+                    if (!Directory.Exists(productPath))
+                        Directory.CreateDirectory(productPath);
+
+                    var imgDiv = doc.GetElementbyId("zoom1");
+                    string imgUrl = imgDiv.GetAttributeValue("href", string.Empty);
+                    imgUrl = imgUrl.Replace("image/cache/catalog", "image/catalog");
+                    imgUrl = imgUrl.Substring(0, imgUrl.Length - 12) + ".jpg";
+
+                    string imgFileName = Path.Combine(productPath, MakeValidFileName(imgUrl.Split('/').Last()));
+
+                    client.DownloadFile(imgUrl, imgFileName);
+
+
+                }
 
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
