@@ -1,18 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 using HtmlAgilityPack;
+using MessageCustomHandler;
+using Ookii.Dialogs.WinForms;
 using HtmlDocument = HtmlAgilityPack.HtmlDocument;
 
 namespace WineScraper
@@ -23,6 +20,7 @@ namespace WineScraper
         private readonly string AppPath = Application.StartupPath;
         private readonly string WineUrl = @"https://www.maccaninodrink.com/en-gb/cameras/?limit=100";
         private Thread scraperThread;
+        private readonly string newLine = Environment.NewLine;
         #endregion
 
         #region "Win32 Imports"
@@ -68,12 +66,25 @@ namespace WineScraper
         }
         #endregion
 
+        #region "Multi-Threading"
+        private delegate void SetControlPropertyThreadSafeDelegate(Control control, string propertyName, object propertyValue);
+
+        private void SetControlProperty(Control control, string propertyName, object propertyValue)
+        {
+            if (control.InvokeRequired)
+                control.Invoke(new SetControlPropertyThreadSafeDelegate(SetControlProperty), new object[] { control, propertyName, propertyValue });
+            else
+                control.GetType().InvokeMember(propertyName, BindingFlags.SetProperty, null, control, new object[] { propertyValue });
+        }
+        #endregion
+
         #region "Functions"
         public FrmMain()
         {
             InitializeComponent();
-
             CreateConsole();
+
+            SetCueText(TxtSavePath, "Save path...");
         }
 
         private void StartThread(ThreadStart newStart)
@@ -118,27 +129,83 @@ namespace WineScraper
             Console.ForegroundColor = ConsoleColor.White;
         }
 
+        private void SetStatus(string newStatus)
+        {
+            SetControlProperty(LabelStatus, "Text", "Status: " + newStatus);
+        }
+
+        private void SetCueText(Control control, string text)
+        {
+            SendMessage(control.Handle, EM_SETCUEBANNER, 0, text);
+        }
+
         private void Scrape()
         {
-            using WebClient client = new WebClient();
-            client.Headers.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0");
-
-            string rawHtml = client.DownloadString(WineUrl);
-
-            if (string.IsNullOrWhiteSpace(rawHtml))
+            try
             {
-                LogError("No response from server");
-                return;
+                Log("Getting source...");
+                SetStatus("Working...");
+
+                string MainDir = TxtSavePath.Text;
+
+                if (string.IsNullOrWhiteSpace(MainDir) || !Directory.Exists(MainDir))
+                {
+                    MainDir = Path.Combine(AppPath, @"Products");
+
+                    if (!Directory.Exists(MainDir))
+                        Directory.CreateDirectory(MainDir);
+                }
+
+                using WebClient client = new WebClient();
+                client.Headers.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0");
+
+                string rawHtml = client.DownloadString(WineUrl);
+
+                if (string.IsNullOrWhiteSpace(rawHtml))
+                {
+                    LogError("No response from server");
+                    return;
+                }
+
+                var doc = new HtmlDocument();
+                doc.LoadHtml(rawHtml);
+
+                Log("Getting pages...");
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
             }
-
-            var doc = new HtmlDocument();
-            doc.LoadHtml(rawHtml);
-
-
+            catch (ThreadAbortException) { }
+            catch (Exception ex)
+            {
+                LogError("Error scraping: " + ex.Message);
+                CMBox.Show("Error", "Error scraping: " + ex.Message, Style.Error, Buttons.OK, ex.ToString());
+            }
+            finally
+            {
+                SetStatus("Idle");
+                SetControlProperty(BtnStart, "Text", "Start");
+                Log("Done" + newLine);
+            }
         }
         #endregion
 
         #region "Handles"
+        private void BtnSavePath_Click(object sender, EventArgs e)
+        {
+            VistaFolderBrowserDialog saveDialog = new VistaFolderBrowserDialog()
+            {
+                UseDescriptionForTitle = true,
+                Description = "Select new save path",
+                ShowNewFolderButton = true
+            };
+
+            if (saveDialog.ShowDialog() == DialogResult.OK)
+            {
+                TxtSavePath.Text = saveDialog.SelectedPath;
+            }
+        }
+
         private void BtnStart_Click(object sender, EventArgs e)
         {
             if (BtnStart.Text == "Start")
@@ -158,6 +225,7 @@ namespace WineScraper
                 scraperThread.SetApartmentState(ApartmentState.STA);
                 scraperThread.Start();
 
+                SetStatus("Idle");
                 BtnStart.Text = "Stop";
             }
             else
