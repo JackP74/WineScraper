@@ -223,13 +223,37 @@ namespace WineScraper
                     var imgDiv = doc.GetElementbyId("zoom1");
                     string imgUrl = imgDiv.GetAttributeValue("href", string.Empty);
                     imgUrl = imgUrl.Replace("image/cache/catalog", "image/catalog");
-                    imgUrl = imgUrl.Substring(0, imgUrl.Length - 12) + ".jpg";
+                    imgUrl = imgUrl.Replace("image/cache/data", "image/data");
+                    imgUrl = imgUrl.Substring(0, imgUrl.Length - 12) + "." + imgUrl.Split('.').Last();
 
-                    string imgFileName = Path.Combine(productPath, MakeValidFileName(imgUrl.Split('/').Last()));
+                    string imgFileName = MakeValidFileName(imgUrl.Split('/').Last());
 
-                    client.DownloadFile(imgUrl, imgFileName);
+                    Log(imgUrl);
 
+                    client.DownloadFile(imgUrl, Path.Combine(productPath, imgFileName));
 
+                    var miscInfoDiv = productDiv.SelectSingleNode(".//div[contains(@class, 'product-buy-logo')]").SelectSingleNode(".//ul[contains(@class, 'list-unstyled')]");
+
+                    var miscDivs = miscInfoDiv.SelectNodes(".//li");
+
+                    string brand = string.Empty;
+                    string productCode = string.Empty;
+
+                    foreach(var misc in miscDivs)
+                    {
+                        string innerTxt = misc.InnerText.Trim().Replace("\n", "").Replace("\r", "").Trim().Replace("  ", " ");
+
+                        if (innerTxt.StartsWith("Brand:"))
+                        {
+                            brand = innerTxt.Substring(6);
+                        }
+                        else if (innerTxt.StartsWith("Product Code:"))
+                        {
+                            productCode = innerTxt.Substring(13);
+                        }
+                    }
+
+                    Log(brand + newLine + productCode + newLine);
                 }
 
                 GC.Collect();
