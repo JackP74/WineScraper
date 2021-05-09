@@ -8,8 +8,12 @@ using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+
+using HtmlAgilityPack;
+using HtmlDocument = HtmlAgilityPack.HtmlDocument;
 
 namespace WineScraper
 {
@@ -17,6 +21,8 @@ namespace WineScraper
     {
         #region "Variables"
         private readonly string AppPath = Application.StartupPath;
+        private readonly string WineUrl = @"https://www.maccaninodrink.com/en-gb/cameras/?limit=100";
+        private Thread scraperThread;
         #endregion
 
         #region "Win32 Imports"
@@ -70,7 +76,12 @@ namespace WineScraper
             CreateConsole();
         }
 
-        
+        private void StartThread(ThreadStart newStart)
+        {
+            Thread newThread = new Thread(newStart) { IsBackground = true };
+            newThread.SetApartmentState(ApartmentState.STA);
+            newThread.Start();
+        }
 
         private void CreateConsole()
         {
@@ -112,7 +123,58 @@ namespace WineScraper
             using WebClient client = new WebClient();
             client.Headers.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0");
 
+            string rawHtml = client.DownloadString(WineUrl);
 
+            if (string.IsNullOrWhiteSpace(rawHtml))
+            {
+                LogError("No response from server");
+                return;
+            }
+
+            var doc = new HtmlDocument();
+            doc.LoadHtml(rawHtml);
+
+
+        }
+        #endregion
+
+        #region "Handles"
+        private void BtnStart_Click(object sender, EventArgs e)
+        {
+            if (BtnStart.Text == "Start")
+            {
+                if (scraperThread != null)
+                {
+                    try
+                    {
+                        scraperThread.Abort();
+                    }
+                    catch { }
+
+                    scraperThread = null;
+                }
+
+                scraperThread = new Thread(() => { Scrape(); }) { IsBackground = true };
+                scraperThread.SetApartmentState(ApartmentState.STA);
+                scraperThread.Start();
+
+                BtnStart.Text = "Stop";
+            }
+            else
+            {
+                if (scraperThread != null)
+                {
+                    try
+                    {
+                        scraperThread.Abort();
+                    }
+                    catch { }
+
+                    scraperThread = null;
+                }
+
+                BtnStart.Text = "Start";
+            }
         }
         #endregion
     }
