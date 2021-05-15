@@ -13,6 +13,7 @@ using HtmlAgilityPack;
 using MessageCustomHandler;
 using Ookii.Dialogs.WinForms;
 using HtmlDocument = HtmlAgilityPack.HtmlDocument;
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace WineScraper
 {
@@ -167,6 +168,7 @@ namespace WineScraper
                 }
 
                 using WebClient client = new WebClient();
+                client.Encoding = System.Text.Encoding.UTF8;
                 client.Headers.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0");
 
                 string rawHtml = client.DownloadString(WineUrl);
@@ -180,7 +182,7 @@ namespace WineScraper
                 var doc = new HtmlDocument();
                 doc.LoadHtml(rawHtml);
 
-                Log("Getting pages...");
+                Log("Getting product pages...");
 
                 List<string> productsURLs = new List<string>();
 
@@ -202,7 +204,34 @@ namespace WineScraper
 
                 Log("Getting products...");
 
-                foreach(var url in productsURLs)
+                Excel.Application excel = new Excel.Application
+                {
+                    Visible = false,
+                    DisplayAlerts = false
+                };
+
+                if (excel == null)
+                {
+                    CMBox.Show("Warning", "Excel is not properly installed!", Style.Warning, Buttons.OK);
+                    return;
+                }
+
+                object misValue = Missing.Value;
+                var xlWorkBook = excel.Workbooks.Add(misValue);
+                var xlWorkSheet = (Excel.Worksheet)xlWorkBook.Worksheets.get_Item(1);
+                xlWorkSheet.Name = @"maccaninodrink data";
+
+                xlWorkSheet.Cells[1, 1] = "Name";
+                xlWorkSheet.Cells[1, 2] = "Image URL";
+                xlWorkSheet.Cells[1, 3] = "Brand";
+                xlWorkSheet.Cells[1, 4] = "Product Code";
+                xlWorkSheet.Cells[1, 5] = "Price";
+                xlWorkSheet.Cells[1, 6] = "Price W/ No Tax";
+                xlWorkSheet.Cells[1, 7] = "Tags";
+
+                int CurrentRow = 2;
+
+                foreach (var url in productsURLs)
                 {
                     rawHtml = client.DownloadString(url);
 
@@ -228,8 +257,6 @@ namespace WineScraper
 
                     string imgFileName = MakeValidFileName(imgUrl.Split('/').Last());
 
-                    Log(imgUrl);
-
                     client.DownloadFile(imgUrl, Path.Combine(productPath, imgFileName));
 
                     var miscInfoDiv = productDiv.SelectSingleNode(".//div[contains(@class, 'product-buy-logo')]").SelectSingleNode(".//ul[contains(@class, 'list-unstyled')]");
@@ -241,20 +268,73 @@ namespace WineScraper
 
                     foreach(var misc in miscDivs)
                     {
-                        string innerTxt = misc.InnerText.Trim().Replace("\n", "").Replace("\r", "").Trim().Replace("  ", " ");
+                        try
+                        {
+                            string innerTxt = misc.InnerText.Trim().Replace("\n", "").Replace("\r", "").Trim().Replace("  ", " ");
 
-                        if (innerTxt.StartsWith("Brand:"))
-                        {
-                            brand = innerTxt.Substring(6);
+                            if (innerTxt.StartsWith("Brand:"))
+                            {
+                                brand = innerTxt.Substring(6).Trim();
+                            }
+                            else if (innerTxt.StartsWith("Product Code:"))
+                            {
+                                productCode = innerTxt.Substring(13).Trim();
+                            }
                         }
-                        else if (innerTxt.StartsWith("Product Code:"))
-                        {
-                            productCode = innerTxt.Substring(13);
-                        }
+                        catch { }
                     }
 
-                    Log(brand + newLine + productCode + newLine);
+                    string price = string.Empty;
+
+                    try
+                    {
+                        var priceNode = doc.DocumentNode.SelectSingleNode("//div[@class='price-h']");
+                        price = priceNode.InnerText.Trim();
+                    }
+                    catch { }
+
+                    string exTaxPrice = string.Empty;
+
+                    try
+                    {
+                        var exTaxParent = parentElement.SelectSingleNode(".//ul[@class='list-unstyled pp']/li[2]");
+                        exTaxPrice = exTaxParent.InnerText.Trim();
+                        exTaxPrice = exTaxPrice.Split(':')[1].Trim();
+                    }
+                    catch { }
+
+                    string tags = string.Empty;
+
+                    try
+                    {
+                        var tagsParent = parentElement.SelectSingleNode(".//ul[@class='list-unstyled pf pf-bottom']/li[2]");
+                        var tagsNode = tagsParent.SelectNodes(".//a");
+
+                        List<string> tagList = tagsNode.Where(x => { return !string.IsNullOrWhiteSpace(x.InnerText.Trim()); }).Select(x => x.InnerText.Trim()).ToList();
+                        tags = string.Join("; ", tagList);
+                    }
+                    catch { }
+
+                    xlWorkSheet.Cells[CurrentRow, 1] = name;
+                    xlWorkSheet.Cells[CurrentRow, 2] = imgUrl;
+                    xlWorkSheet.Cells[CurrentRow, 3] = brand;
+                    xlWorkSheet.Cells[CurrentRow, 4] = productCode;
+                    xlWorkSheet.Cells[CurrentRow, 5] = price;
+                    xlWorkSheet.Cells[CurrentRow, 6] = exTaxPrice;
+                    xlWorkSheet.Cells[CurrentRow, 7] = tags;
+
+                    CurrentRow++;
                 }
+
+                string excelPath = Path.Combine(MainDir, "products.csv");
+
+                xlWorkBook.SaveAs(excelPath, Excel.XlFileFormat.xlCSV, misValue, misValue, misValue, misValue, Excel.XlSaveAsAccessMode.xlExclusive, misValue, misValue, misValue, misValue, misValue);
+                xlWorkBook.Close(true, misValue, misValue);
+                excel.Quit();
+
+                Marshal.ReleaseComObject(xlWorkSheet);
+                Marshal.ReleaseComObject(xlWorkBook);
+                Marshal.ReleaseComObject(excel);
 
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
