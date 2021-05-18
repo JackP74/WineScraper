@@ -14,6 +14,7 @@ using MessageCustomHandler;
 using Ookii.Dialogs.WinForms;
 using HtmlDocument = HtmlAgilityPack.HtmlDocument;
 using Excel = Microsoft.Office.Interop.Excel;
+using System.Text;
 
 namespace WineScraper
 {
@@ -21,7 +22,7 @@ namespace WineScraper
     {
         #region "Variables"
         private readonly string AppPath = Application.StartupPath;
-        private readonly string WineUrl = @"https://www.maccaninodrink.com/en-gb/cameras/?limit=100";
+        private readonly string WineUrl = @"https://www.maccaninodrink.com";
         private Thread scraperThread;
         private readonly string newLine = Environment.NewLine;
         #endregion
@@ -150,6 +151,110 @@ namespace WineScraper
             return Regex.Replace(name, invalidRegStr, "_");
         }
 
+        private void SetUpHeaders(Excel.Worksheet xlWorkSheet)
+        {
+            xlWorkSheet.Cells[1, 1] = "Handle";
+            xlWorkSheet.Cells[1, 2] = "Title";
+            xlWorkSheet.Cells[1, 3] = "Body (HTML)";
+            xlWorkSheet.Cells[1, 4] = "Vendor";
+            xlWorkSheet.Cells[1, 5] = "Type";
+            xlWorkSheet.Cells[1, 6] = "Tags";
+            xlWorkSheet.Cells[1, 7] = "Published";
+            xlWorkSheet.Cells[1, 8] = "Option1 Name";
+            xlWorkSheet.Cells[1, 9] = "Option1 Value";
+            xlWorkSheet.Cells[1, 10] = "Option2 Name";
+            xlWorkSheet.Cells[1, 11] = "Option2 Value";
+            xlWorkSheet.Cells[1, 12] = "Option3 Name";
+            xlWorkSheet.Cells[1, 13] = "Option3 Value";
+            xlWorkSheet.Cells[1, 14] = "Variant SKU";
+            xlWorkSheet.Cells[1, 15] = "Variant Grams";
+            xlWorkSheet.Cells[1, 16] = "Variant Inventory Tracker";
+            xlWorkSheet.Cells[1, 17] = "Variant Inventory Qty";
+            xlWorkSheet.Cells[1, 18] = "Variant Inventory Policy";
+            xlWorkSheet.Cells[1, 19] = "Variant Fulfillment Service";
+            xlWorkSheet.Cells[1, 20] = "Variant Price";
+            xlWorkSheet.Cells[1, 21] = "Variant Compare At Price";
+            xlWorkSheet.Cells[1, 22] = "Variant Requires Shipping";
+            xlWorkSheet.Cells[1, 23] = "Variant Taxable";
+            xlWorkSheet.Cells[1, 24] = "Variant Barcode";
+            xlWorkSheet.Cells[1, 25] = "Image Src";
+            xlWorkSheet.Cells[1, 26] = "Image Position";
+            xlWorkSheet.Cells[1, 27] = "Image Alt Text";
+            xlWorkSheet.Cells[1, 28] = "Gift Card";
+            xlWorkSheet.Cells[1, 29] = "SEO Title";
+            xlWorkSheet.Cells[1, 30] = "SEO Description";
+            xlWorkSheet.Cells[1, 31] = "Google Shopping / Google Product Category";
+            xlWorkSheet.Cells[1, 32] = "Google Shopping / Gender";
+            xlWorkSheet.Cells[1, 33] = "Google Shopping / Age Group";
+            xlWorkSheet.Cells[1, 34] = "Google Shopping / MPN";
+            xlWorkSheet.Cells[1, 35] = "Google Shopping / AdWords Grouping";
+            xlWorkSheet.Cells[1, 36] = "Google Shopping / AdWords Labels";
+            xlWorkSheet.Cells[1, 37] = "Google Shopping / Condition";
+            xlWorkSheet.Cells[1, 38] = "Google Shopping / Custom Product";
+            xlWorkSheet.Cells[1, 39] = "Google Shopping / Custom Label 0";
+            xlWorkSheet.Cells[1, 40] = "Google Shopping / Custom Label 1";
+            xlWorkSheet.Cells[1, 41] = "Google Shopping / Custom Label 2";
+            xlWorkSheet.Cells[1, 42] = "Google Shopping / Custom Label 3";
+            xlWorkSheet.Cells[1, 43] = "Google Shopping / Custom Label 4";
+            xlWorkSheet.Cells[1, 44] = "Variant Image";
+            xlWorkSheet.Cells[1, 45] = "Variant Weight Unit";
+            xlWorkSheet.Cells[1, 46] = "Variant Tax Code";
+            xlWorkSheet.Cells[1, 47] = "Cost per item";
+            xlWorkSheet.Cells[1, 48] = "Status";
+        }
+
+        private void SetProduct(Excel.Worksheet xlWorkSheet, int row, string title, string slug, string description, string type, string tags, string price, string imgURL, string seoTitle, string seoDescription)
+        {
+            xlWorkSheet.Cells[row, 1] = slug;
+            xlWorkSheet.Cells[row, 2] = title;
+            xlWorkSheet.Cells[row, 3] = description;
+            xlWorkSheet.Cells[row, 4] = "";
+            xlWorkSheet.Cells[row, 5] = type;
+            xlWorkSheet.Cells[row, 6] = tags;
+            xlWorkSheet.Cells[row, 7] = "Published";
+            xlWorkSheet.Cells[row, 8] = title;
+            xlWorkSheet.Cells[row, 9] = "Default " + title;
+            xlWorkSheet.Cells[row, 10] = "";
+            xlWorkSheet.Cells[row, 11] = "";
+            xlWorkSheet.Cells[row, 12] = "";
+            xlWorkSheet.Cells[row, 13] = "";
+            xlWorkSheet.Cells[row, 14] = "";
+            xlWorkSheet.Cells[row, 15] = "1000";
+            xlWorkSheet.Cells[row, 16] = "shopify";
+            xlWorkSheet.Cells[row, 17] = "";
+            xlWorkSheet.Cells[row, 18] = "continue";
+            xlWorkSheet.Cells[row, 19] = "manual";
+            xlWorkSheet.Cells[row, 20] = price;
+            xlWorkSheet.Cells[row, 21] = price;
+            xlWorkSheet.Cells[row, 22] = "TRUE";
+            xlWorkSheet.Cells[row, 23] = "FALSE";
+            xlWorkSheet.Cells[row, 24] = "";
+            xlWorkSheet.Cells[row, 25] = imgURL;
+            xlWorkSheet.Cells[row, 26] = "1";
+            xlWorkSheet.Cells[row, 27] = "";
+            xlWorkSheet.Cells[row, 28] = "FALSE";
+            xlWorkSheet.Cells[row, 29] = seoTitle;
+            xlWorkSheet.Cells[row, 30] = seoDescription;
+            xlWorkSheet.Cells[row, 31] = "";
+            xlWorkSheet.Cells[row, 32] = "";
+            xlWorkSheet.Cells[row, 33] = "";
+            xlWorkSheet.Cells[row, 34] = "";
+            xlWorkSheet.Cells[row, 35] = "";
+            xlWorkSheet.Cells[row, 36] = "";
+            xlWorkSheet.Cells[row, 37] = "";
+            xlWorkSheet.Cells[row, 38] = "";
+            xlWorkSheet.Cells[row, 39] = "";
+            xlWorkSheet.Cells[row, 40] = "";
+            xlWorkSheet.Cells[row, 41] = "";
+            xlWorkSheet.Cells[row, 42] = "";
+            xlWorkSheet.Cells[row, 43] = "";
+            xlWorkSheet.Cells[row, 44] = "";
+            xlWorkSheet.Cells[row, 45] = "g";
+            xlWorkSheet.Cells[row, 46] = "";
+            xlWorkSheet.Cells[row, 47] = "";
+            xlWorkSheet.Cells[row, 48] = "active";
+        }
+
         private void Scrape()
         {
             try
@@ -171,6 +276,7 @@ namespace WineScraper
                 client.Encoding = System.Text.Encoding.UTF8;
                 client.Headers.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0");
 
+                var doc = new HtmlDocument();
                 string rawHtml = client.DownloadString(WineUrl);
 
                 if (string.IsNullOrWhiteSpace(rawHtml))
@@ -179,30 +285,22 @@ namespace WineScraper
                     return;
                 }
 
-                var doc = new HtmlDocument();
                 doc.LoadHtml(rawHtml);
 
-                Log("Getting product pages...");
+                var MenuNode = doc.GetElementbyId("menu_ver_2");
+                var LinksNode = MenuNode.SelectSingleNode(".//div[@class='dropdown-menus']/ul");
 
-                List<string> productsURLs = new List<string>();
+                var LinkNodes = LinksNode.SelectNodes(".//li");
 
-                var parentElement = doc.GetElementbyId("content");
-                var productsDivs = parentElement.SelectNodes(".//div[contains(@class, 'product-thumb')]");
+                List<string> categoryURLs = new List<string>();
 
-                foreach(var product in productsDivs)
+                foreach (var Link in LinkNodes)
                 {
-                    string url = product.SelectSingleNode(".//div[@class='name']").SelectSingleNode(".//a[@href]").GetAttributeValue("href", string.Empty);
+                    var hrefNode = Link.SelectSingleNode(".//a[@href]");
+                    string itemLink = hrefNode.GetAttributeValue("href", string.Empty);
 
-                    if (url.EndsWith("?limit=100"))
-                        url = url.Substring(0, url.Length - 10);
-
-                    bool result = Uri.TryCreate(url, UriKind.Absolute, out Uri uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
-
-                    if (result)
-                        productsURLs.Add(url);
+                    categoryURLs.Add($"{itemLink}?limit=2000");
                 }
-
-                Log("Getting products...");
 
                 Excel.Application excel = new Excel.Application
                 {
@@ -221,109 +319,196 @@ namespace WineScraper
                 var xlWorkSheet = (Excel.Worksheet)xlWorkBook.Worksheets.get_Item(1);
                 xlWorkSheet.Name = @"maccaninodrink data";
 
-                xlWorkSheet.Cells[1, 1] = "Name";
-                xlWorkSheet.Cells[1, 2] = "Image URL";
-                xlWorkSheet.Cells[1, 3] = "Brand";
-                xlWorkSheet.Cells[1, 4] = "Product Code";
-                xlWorkSheet.Cells[1, 5] = "Price";
-                xlWorkSheet.Cells[1, 6] = "Price W/ No Tax";
-                xlWorkSheet.Cells[1, 7] = "Tags";
+                SetUpHeaders(xlWorkSheet);
 
                 int CurrentRow = 2;
 
-                foreach (var url in productsURLs)
+                foreach (var catURL in categoryURLs)
                 {
-                    rawHtml = client.DownloadString(url);
-
-                    doc = new HtmlDocument();
-                    doc.LoadHtml(rawHtml);
-
-                    parentElement = doc.GetElementbyId("content");
-                    var productDiv = parentElement.SelectSingleNode(".//div[@class='row']").SelectSingleNode(".//div[@class='product-buy-wrapper']");
-
-                    string name = productDiv.SelectSingleNode(".//h1").InnerText;
-
-                    string validFileName = MakeValidFileName(name);
-                    string productPath = Path.Combine(MainDir, validFileName);
-
-                    if (!Directory.Exists(productPath))
-                        Directory.CreateDirectory(productPath);
-
-                    var imgDiv = doc.GetElementbyId("zoom1");
-                    string imgUrl = imgDiv.GetAttributeValue("href", string.Empty);
-                    imgUrl = imgUrl.Replace("image/cache/catalog", "image/catalog");
-                    imgUrl = imgUrl.Replace("image/cache/data", "image/data");
-                    imgUrl = imgUrl.Substring(0, imgUrl.Length - 12) + "." + imgUrl.Split('.').Last();
-
-                    string imgFileName = MakeValidFileName(imgUrl.Split('/').Last());
-
-                    client.DownloadFile(imgUrl, Path.Combine(productPath, imgFileName));
-
-                    var miscInfoDiv = productDiv.SelectSingleNode(".//div[contains(@class, 'product-buy-logo')]").SelectSingleNode(".//ul[contains(@class, 'list-unstyled')]");
-
-                    var miscDivs = miscInfoDiv.SelectNodes(".//li");
-
-                    string brand = string.Empty;
-                    string productCode = string.Empty;
-
-                    foreach(var misc in miscDivs)
+                    try
                     {
-                        try
-                        {
-                            string innerTxt = misc.InnerText.Trim().Replace("\n", "").Replace("\r", "").Trim().Replace("  ", " ");
+                        Log($"Getting page '{catURL}'");
 
-                            if (innerTxt.StartsWith("Brand:"))
+                        rawHtml = client.DownloadString(catURL);
+
+                        if (string.IsNullOrWhiteSpace(rawHtml))
+                        {
+                            LogError("No response from server");
+                            return;
+                        }
+
+                        doc.LoadHtml(rawHtml);
+
+                        Log("Getting product pages...");
+
+                        List<string> productsURLs = new List<string>();
+
+                        var parentElement = doc.GetElementbyId("content");
+                        var productsDivs = parentElement.SelectNodes(".//div[contains(@class, 'product-thumb')]");
+
+                        if (productsDivs == null)
+                        {
+                            Log("Page empty, skipped");
+                            continue;
+                        }
+
+                        foreach (var product in productsDivs)
+                        {
+                            string url = product.SelectSingleNode(".//div[@class='name']").SelectSingleNode(".//a[@href]").GetAttributeValue("href", string.Empty);
+
+                            if (url.EndsWith("?limit=100"))
+                                url = url.Substring(0, url.Length - 10);
+
+                            bool result = Uri.TryCreate(url, UriKind.Absolute, out Uri uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+
+                            if (result)
+                                productsURLs.Add(url);
+                        }
+
+                        Log("Getting products...");
+
+                        foreach (var url in productsURLs)
+                        {
+                            try
                             {
-                                brand = innerTxt.Substring(6).Trim();
+                                rawHtml = client.DownloadString(url);
+
+                                doc = new HtmlDocument();
+                                doc.LoadHtml(rawHtml);
+
+                                parentElement = doc.GetElementbyId("content");
+                                var productDiv = parentElement.SelectSingleNode(".//div[@class='row']").SelectSingleNode(".//div[@class='product-buy-wrapper']");
+
+                                string name = productDiv.SelectSingleNode(".//h1").InnerText;
+
+                                string validFileName = MakeValidFileName(name);
+                                //string productPath = Path.Combine(MainDir, validFileName);
+
+                                // if (!Directory.Exists(productPath))
+                                //    Directory.CreateDirectory(productPath);
+
+                                var imgDiv = doc.GetElementbyId("zoom1");
+                                string imgUrl = imgDiv.GetAttributeValue("href", string.Empty);
+                                imgUrl = imgUrl.Replace("image/cache/catalog", "image/catalog");
+                                imgUrl = imgUrl.Replace("image/cache/data", "image/data");
+                                imgUrl = imgUrl.Substring(0, imgUrl.Length - 12) + "." + imgUrl.Split('.').Last();
+
+                                //string imgFileName = MakeValidFileName(imgUrl.Split('/').Last());
+
+                                //client.DownloadFile(imgUrl, Path.Combine(productPath, imgFileName));
+
+                                var miscInfoDiv = productDiv.SelectSingleNode(".//div[contains(@class, 'product-buy-logo')]").SelectSingleNode(".//ul[contains(@class, 'list-unstyled')]");
+
+                                var miscDivs = miscInfoDiv.SelectNodes(".//li");
+
+                                string brand = string.Empty;
+                                string productCode = string.Empty;
+
+                                foreach (var misc in miscDivs)
+                                {
+                                    try
+                                    {
+                                        string innerTxt = misc.InnerText.Trim().Replace("\n", "").Replace("\r", "").Trim().Replace("  ", " ");
+
+                                        if (innerTxt.StartsWith("Brand:"))
+                                        {
+                                            brand = innerTxt.Substring(6).Trim();
+                                        }
+                                        else if (innerTxt.StartsWith("Product Code:"))
+                                        {
+                                            productCode = innerTxt.Substring(13).Trim();
+                                        }
+                                    }
+                                    catch { }
+                                }
+
+                                string price = string.Empty;
+
+                                try
+                                {
+                                    var priceNode = doc.DocumentNode.SelectSingleNode("//div[@class='price-h']");
+                                    price = priceNode.InnerText.Trim();
+                                }
+                                catch { }
+
+                                string exTaxPrice = string.Empty;
+
+                                try
+                                {
+                                    var exTaxParent = parentElement.SelectSingleNode(".//ul[@class='list-unstyled pp']/li[2]");
+                                    exTaxPrice = exTaxParent.InnerText.Trim();
+                                    exTaxPrice = exTaxPrice.Split(':')[1].Trim();
+                                }
+                                catch { }
+
+                                string tags = string.Empty;
+
+                                try
+                                {
+                                    var tagsParent = parentElement.SelectSingleNode(".//ul[@class='list-unstyled pf pf-bottom']/li[2]");
+                                    var tagsNode = tagsParent.SelectNodes(".//a");
+
+                                    List<string> tagList = tagsNode.Where(x => { return !string.IsNullOrWhiteSpace(x.InnerText.Trim()); }).Select(x => x.InnerText.Trim()).ToList();
+                                    tags = string.Join(", ", tagList);
+
+                                }
+                                catch { }
+
+                                string description = string.Empty;
+
+                                try
+                                {
+                                    var descNode = doc.GetElementbyId("tab-description");
+                                    description = descNode.InnerText.Trim();
+                                }
+                                catch { }
+
+                                string type = string.Empty;
+
+                                try
+                                {
+                                    var breadcrumb = doc.DocumentNode.SelectSingleNode(".//ul[@class='breadcrumb']").InnerText.Trim().Replace(" ", "");
+
+                                    RegexOptions options = RegexOptions.None;
+                                    Regex regex = new Regex("[ ]{2,}", options);
+                                    breadcrumb = regex.Replace(breadcrumb, " ");
+
+                                    List<string> catNames = breadcrumb.Split(new[] { '\r', '\n' }, StringSplitOptions.None).ToList();
+
+                                    catNames.RemoveAt(0);
+                                    catNames.RemoveAt(catNames.Count - 1);
+
+                                    string catNamesStr = string.Join(", ", catNames);
+
+                                    tags = $"{catNamesStr}, {tags}";
+
+                                    type = catNames.Last();
+                                }
+                                catch { }
+
+                                tags = $"\"{tags}\"";
+
+                                string slug = name.ToLower().Replace(" ", "-").RemoveSpecialCharacters();
+
+                                string seoTitle = name.Replace("\n", "").Replace("\r", "").Trim();
+                                string seoDescription = description.Replace("\n", "").Replace("\r", "").Trim();
+
+                                SetProduct(xlWorkSheet, CurrentRow, name, slug, description, type, tags, price, imgUrl, seoTitle, seoDescription);
+
+                                CurrentRow++;
                             }
-                            else if (innerTxt.StartsWith("Product Code:"))
+                            catch (Exception e)
                             {
-                                productCode = innerTxt.Substring(13).Trim();
+                                LogError("Error scraping product, skipping: " + e.Message);
+                                continue;
                             }
                         }
-                        catch { }
                     }
-
-                    string price = string.Empty;
-
-                    try
+                    catch (Exception ex)
                     {
-                        var priceNode = doc.DocumentNode.SelectSingleNode("//div[@class='price-h']");
-                        price = priceNode.InnerText.Trim();
+                        LogError("Error scraping page, skipping: " + ex.Message);
+                        continue;
                     }
-                    catch { }
-
-                    string exTaxPrice = string.Empty;
-
-                    try
-                    {
-                        var exTaxParent = parentElement.SelectSingleNode(".//ul[@class='list-unstyled pp']/li[2]");
-                        exTaxPrice = exTaxParent.InnerText.Trim();
-                        exTaxPrice = exTaxPrice.Split(':')[1].Trim();
-                    }
-                    catch { }
-
-                    string tags = string.Empty;
-
-                    try
-                    {
-                        var tagsParent = parentElement.SelectSingleNode(".//ul[@class='list-unstyled pf pf-bottom']/li[2]");
-                        var tagsNode = tagsParent.SelectNodes(".//a");
-
-                        List<string> tagList = tagsNode.Where(x => { return !string.IsNullOrWhiteSpace(x.InnerText.Trim()); }).Select(x => x.InnerText.Trim()).ToList();
-                        tags = string.Join("; ", tagList);
-                    }
-                    catch { }
-
-                    xlWorkSheet.Cells[CurrentRow, 1] = name;
-                    xlWorkSheet.Cells[CurrentRow, 2] = imgUrl;
-                    xlWorkSheet.Cells[CurrentRow, 3] = brand;
-                    xlWorkSheet.Cells[CurrentRow, 4] = productCode;
-                    xlWorkSheet.Cells[CurrentRow, 5] = price;
-                    xlWorkSheet.Cells[CurrentRow, 6] = exTaxPrice;
-                    xlWorkSheet.Cells[CurrentRow, 7] = tags;
-
-                    CurrentRow++;
                 }
 
                 string excelPath = Path.Combine(MainDir, "products.csv");
